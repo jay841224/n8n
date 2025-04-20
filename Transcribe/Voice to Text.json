@@ -1,0 +1,565 @@
+{
+  "name": "語音轉文字",
+  "nodes": [
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyHour"
+            }
+          ]
+        },
+        "triggerOn": "specificFolder",
+        "folderToWatch": {
+          "__rl": true,
+          "value": "1iaTQyhEFh0Ya8jGbCuDr0ltFZi1urWan",
+          "mode": "list",
+          "cachedResultName": "Transcribe",
+          "cachedResultUrl": "https://drive.google.com/drive/folders/1iaTQyhEFh0Ya8jGbCuDr0ltFZi1urWan"
+        },
+        "event": "fileCreated",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDriveTrigger",
+      "typeVersion": 1,
+      "position": [
+        -480,
+        0
+      ],
+      "id": "4b9ab65d-d15a-444a-99c8-412139d30f1e",
+      "name": "Google Drive Trigger",
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "fCNqSOJ3JvV0QCSh",
+          "name": "Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=你現在收到的是一段語音轉文字的逐字稿切分成數個斷後後分別的摘要，結合這些摘要整合成一個結果，依照以下格式，回傳一段純 JSON 物件，包含以下兩個欄位：\n\n1. \"summary\"：這段語音內容的摘要，請精簡整理重點。\n2. \"filename\"：請根據內容幫我自動取一個簡短且有意義的檔案名稱（不要包含副檔名）。\n\n語音文字稿如下：\n\"\"\"\n{{ $input.all().toJsonString() }}\n\"\"\"\n\n⚠️ 請**直接回傳純 JSON 物件**（不要加引號、不要包在文字欄位中），也不要加上任何其他說明文字。\n\n"
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.6,
+      "position": [
+        1020,
+        0
+      ],
+      "id": "89ad3f43-3717-4e4e-969a-fdfe2e1d2b80",
+      "name": "Basic LLM Chain"
+    },
+    {
+      "parameters": {
+        "model": "grok-3-beta",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatXAiGrok",
+      "typeVersion": 1,
+      "position": [
+        860,
+        640
+      ],
+      "id": "29fa3ac3-2826-4f7c-a77c-edcd22b4e8ca",
+      "name": "xAI Grok Chat Model",
+      "credentials": {
+        "xAiApi": {
+          "id": "QjSbSd8utWd4keq6",
+          "name": "xAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "fromEmail": "j1360fy6416nb@gmail.com",
+        "toEmail": "tiana8546@gmail.com",
+        "subject": "LUJJAY transcribe service notification",
+        "html": "=<!DOCTYPE html>\n<html lang=\"zh-Hant\">\n  <head>\n    <meta charset=\"UTF-8\">\n    <title>語音轉文字摘要通知</title>\n  </head>\n  <body style=\"font-family: Arial, sans-serif; background-color: #f7f7f7; padding: 20px;\">\n    <div style=\"max-width: 600px; margin: auto; background-color: #ffffff; border-radius: 8px; padding: 20px; box-shadow: 0 2px 5px rgba(0,0,0,0.1);\">\n      <h2 style=\"color: #2c3e50;\">✅ 語音轉文字處理完成</h2>\n      \n      <p><strong>📄 檔案名稱：{{ $('Code2').item.json.filename }}</strong>voice_test</p>\n\n      <p style=\"margin-top: 20px;\">\n        🔗 <a href=\"https://drive.google.com/drive/folders/1kFRWU90exgthWYTGF44HtFIYUkV-JTtK?usp=drive_link\" style=\"color: #3498db; text-decoration: none;\">點此下載完整內容</a>\n      </p>\n\n      <hr style=\"margin: 30px 0; border: none; border-top: 1px solid #ddd;\">\n\n      <footer style=\"font-size: 12px; color: #999;\">\n        此為系統自動發送通知，請勿回覆。若有問題請聯絡系統管理員。\n      </footer>\n    </div>\n  </body>\n</html>\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        2380,
+        -20
+      ],
+      "id": "7ba3de18-fdb5-44a7-8b1c-f738aec3d00d",
+      "name": "Send Email",
+      "webhookId": "bb87cd0b-64e6-4130-ab16-3c48a879ade2",
+      "credentials": {
+        "smtp": {
+          "id": "324sqt8DGkZykbLz",
+          "name": "SMTP account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "download",
+        "fileId": {
+          "__rl": true,
+          "value": "={{ $json.id }}",
+          "mode": "id"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        -300,
+        0
+      ],
+      "id": "c1f8931e-3049-4d1f-b8fd-faf5f6c2ac0a",
+      "name": "Download",
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "fCNqSOJ3JvV0QCSh",
+          "name": "Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "audio",
+        "operation": "transcribe",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 1.8,
+      "position": [
+        -100,
+        0
+      ],
+      "id": "d45ddf3b-4008-4d38-97af-f3a33d720df5",
+      "name": "Transcribe",
+      "credentials": {
+        "openAiApi": {
+          "id": "JSut8cSHbQXP2pK9",
+          "name": "Tiana Open AI Key"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "createFromText",
+        "content": "=Summary:\n{{ $json.summary }}\nContent:\n{{ $json.text }}\n\n",
+        "name": "={{ $json.filename }}",
+        "driveId": {
+          "__rl": true,
+          "value": "My Drive",
+          "mode": "list",
+          "cachedResultName": "My Drive",
+          "cachedResultUrl": "https://drive.google.com/drive/my-drive"
+        },
+        "folderId": {
+          "__rl": true,
+          "value": "1kFRWU90exgthWYTGF44HtFIYUkV-JTtK",
+          "mode": "list",
+          "cachedResultName": "Transcribe output",
+          "cachedResultUrl": "https://drive.google.com/drive/folders/1kFRWU90exgthWYTGF44HtFIYUkV-JTtK"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        1880,
+        0
+      ],
+      "id": "93a20d8a-e0d5-4f5f-bf36-8464104884a8",
+      "name": "create file",
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "fCNqSOJ3JvV0QCSh",
+          "name": "Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "grok-3-beta",
+          "mode": "list",
+          "cachedResultName": "grok-3-beta"
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        1060,
+        180
+      ],
+      "id": "d467c109-d9c3-49d3-841f-070da0119e5f",
+      "name": "OpenAI Chat Model",
+      "credentials": {
+        "openAiApi": {
+          "id": "oIrSrkw3YM5wYSMK",
+          "name": "XAi"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "batchSize": "={{ $input.all().length }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        760,
+        0
+      ],
+      "id": "4d2a96cc-fd42-4ee9-8e14-3cfc7fecdc8c",
+      "name": "Loop Over Items"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=你現在收到的是一段語音轉文字的逐字稿，請依照以下標準做摘要\n\n1. 這段語音內容的摘要，請精簡整理重點。\n2. 以純文字回應，不要加入引號、不要包在文字欄位中\n\n以下是逐字稿內容\n\"\n{{ $json.content }}\n\"\n\n\n"
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.6,
+      "position": [
+        840,
+        380
+      ],
+      "id": "607b1f27-4164-43aa-99b1-714d2ebe278a",
+      "name": "Basic LLM Chain1"
+    },
+    {
+      "parameters": {
+        "jsCode": "const text = $input.first().json.text;\nconst maxLength = 1500;\nconst parts = [];\n\nfor (let i = 0; i < text.length; i += maxLength) {\n  parts.push({\n    part: i / maxLength + 1,\n    content: text.slice(i, i + maxLength)\n  });\n}\n\n// 回傳切好的段落\nreturn parts.map(p => ({ json: p }));"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        360,
+        0
+      ],
+      "id": "38226693-6521-44b5-ab56-8c30c84b573f",
+      "name": "分割input"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        360,
+        -240
+      ],
+      "id": "f34425e7-e757-4612-b3f1-fecbe4d7b515",
+      "name": "No Operation, do nothing"
+    },
+    {
+      "parameters": {
+        "jsCode": "const jsonString = $input.first().json.text\nconst parsed = JSON.parse(jsonString);\n\nreturn parsed;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1440,
+        0
+      ],
+      "id": "a920c811-1ee3-49db-a1ac-4debb53d7d14",
+      "name": "Code2"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Loop over input items and add a new field called 'myNewField' to the JSON of each one\nvar result = ''\nfor (const item of $input.all()) {\n  result += item.json.text\n  result += ';'\n}\n\nreturn {\"result\": result}"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        420,
+        220
+      ],
+      "id": "e8ebfc3c-cbbb-4427-a950-66048ffa7218",
+      "name": "Combine"
+    },
+    {
+      "parameters": {
+        "mode": "combineBySql",
+        "query": "SELECT * FROM input1 OUTER JOIN input2"
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.1,
+      "position": [
+        1680,
+        -220
+      ],
+      "id": "e1333e12-9c12-462f-b16b-b66506a7da96",
+      "name": "Merge"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "d7c68480-6136-4309-b74c-c90f33ff456b",
+              "leftValue": "={{ $json.id }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        2080,
+        0
+      ],
+      "id": "0dbfe3d4-a0aa-4e34-9e24-a4c0b51bba8d",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "operation": "deleteFile",
+        "fileId": {
+          "__rl": true,
+          "value": "={{ $('Google Drive Trigger').item.json.id }}",
+          "mode": "id"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        140,
+        220
+      ],
+      "id": "b655373b-555c-4dc1-ab37-5bcfdf2da99d",
+      "name": "Remove File",
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "fCNqSOJ3JvV0QCSh",
+          "name": "Google Drive account"
+        }
+      }
+    }
+  ],
+  "pinData": {
+    "Transcribe": [
+      {
+        "json": {
+          "text": "會出的時候他會有一個勾勾 可以讓他勾說你要不要通報 那勾是預設有打勾的 所以你如果就是勾起來的話 他就是交易送出之後 然後專行的OP 然後再去指引通報系統查說 這個有沒有指引通報 他就會直接去那個上面 然後如果你沒有勾的話 你把那個勾勾拿掉的話就不會 然後如果在GMB上面客戶做完 是到他如果是GMB的交易狀態 是交易成功的話 然後那個就是OP一樣 去指引通報系統上面按查詢 他就會出現那個 就是有指引通報的那條資料這樣子 大概是這樣 但是他都是要按查詢 然後指引通報系統會去確認 說要回查GMB的交易狀態 所以他一定要按查詢那個動作 他才會有資料 按房是丟交易成功的資料給指引通報系統 但是被動是用按查詢 對 他才丟過去 他按查詢的時候 你會把勾拿掉嗎 他會 他會 你說他什麼情況下會把勾勾拿掉 就可能譬如說他們去modify 什麼之類的 他們會把那個勾勾拿掉 因為如果怕說 如果沒有把他拿掉 他就要量幣 因為他們林櫃來說 應該是就是你送出之後 他就會自動送出 他不是用trigger的方式去查 就是他兩邊有點邏輯有點不太一樣 那目的都是要把這一筆交易的金額 送到指引通報系統 對 然後送進去之後 是金座還是金行 就是那個他們就要去做資金調度 目的是要做 知道有多少交易要發要做 所以他們要去做資金調度 對 目的是資金調度 對 所以應該是就是核心 GMB到核心核心到資金通報系統 這一段的格式 你要怎麼解 然後邏輯是什麼 應該就是要講這一段 如果是網銀這一段 應該是就指引通報跟網銀 他那邊是林櫃的 兩個通路是不一樣的 你這樣講 假如說那種很大筆的 通常越南這邊 他們是會先跟交易機構 他們先報資金 因為太大筆了 那以後如果是要用網銀做的話 因為網銀這邊看起來沒有把他給列出來 你就只能直接用基金通報系統 直接就把他刪掉 他就一定會重報一次 然後你要記得把他刪掉 比如說就是有先通報交易室 然後交易室說金額太大 今天才幫他做這樣 沒有就是交易室已經先幫他 連通報資金了 因為金額很大 所以他可能會連通先報資金 對 那網銀在 因為看起來就是網銀做什麼 他這種應該再給我一次上去 對 他就要記得把他刪掉這樣 對 像什麼交易是各國 都是不一樣的人在做對不對 就是越南也會有交易室 對 所以應該是他們原本 林貴應該是我們的邏輯 然後應該是 也許各國的邏輯有點不太一樣 是不是也許先知道 他們各國現在現況的邏輯是什麼 對 然後我們可以就這一段 他們想要報的流程 然後去問的邏輯 對啊 就我一個完全 我剛剛才開始理解的 就是各區域的那個遊戲規則 反正都是要基金才需要去做通報 聽起來是主動的吧 林貴的人員或者是手中 除了這筆要做資金通報的 他才下注金 那他也先不下 應該是幾乎每一筆 你假如是匯款都要報資金 都要報資金 那是不是因為有一些國家 是兩段式交易 對 所以網銀交易也會跑到 代表他 所以如果網銀丟一次通報 FX再丟一次 丟一次通報 所以才會有這個邏輯 那如果說都是全自動的國家 應該也許就沒有這個邏輯 然後誰是 兩段式誰是全自動的 我以前也沒有看過對不對 應該大家一堂主題 應該大家都知道 對 只是我記不起來 我現在就比較記不起來 光是兩個全自動 你們都是全自動 這兩個 我的樂隊 全自動 那個樂隊全自動 就是一半 只有樂隊 那我們有什麼樣法 跟我們的知識 對 因為其實好像 大家最近都在問同一個問題 然後問到最後 其實都會問到台灣怎麼做 對 但我跟國旗討論 其實台灣如果 它是最全面的 可是不見得適用 現在大家國家的情境 所以也許就是從兩邊都 這一題是不是 確實也不用GNB帶來 應該要吧 就是GNB 我們假如要丟資金通報 對 資金通報 他同時都一個環節要 要同時都一個環節 那是一個通路 就是網民跟零貴 網民上座的要通報 怎麼通報 什麼時間點要通報 這件事情 所以他們在那裡講說 台灣不准通報的 這個程序是什麼 這樣我可能比較明確的 看法是對的 你說讓誰 IPPN 對啊 我們 我覺得可以 也許就是我們先去要電文吧 因為比較爛 比較那個 迂迴一點的做法 就不是直接問你怎麼做 你先告訴我電文在哪 我們直接看call就好 可以嗎 由德瑞克導讀 技術 技術顧問 真本能切換電文工作室 沒有啦 就是我們現在可以 我們比較迂迴的方式就是 我們可以先去要電文 就說 請問一下台灣現在的資金通報 台幣跟外幣 各是怎麼過 怎麼電文 然後我們假裝讀了 過電文之後 還去問他 請問一下這個時間點 不用那麼可憐吧 就我們直接去問 因為最近是被香港問到 然後想說電視也有問 所以應該是很多國家 同時應該是一層 都在做 對 一層一層 還是應該說因為 反而現在海外國家 好像都在問這一段 問到最後都會問到台灣 可不可以出來講一次 讓全部的人一起知道 是不是就 人家之所以要說是你跟 愛奇藝有關 那大局的擴張了以後 資金 要做這件事情 我覺得趕快一致到 然後要做資金通報 然後他們應該是想要 直接照零貴 對 像人工報基金 對他們來說比較 就是想要人工是有風險 然後萬一忘記報 你幹嘛 然後就想要做資金通報 對 我剛才想說 這種東西只是 教育過程中就可以 就不是直接塞在裡面 還要報 但我想問一個有邏輯的問題 就是之前院長曾經討論過 台灣不是有一些客戶 是把教育限額 就是人工改良 把它拉得很高嗎 那人保的話 他們每一天可以匯 很高的限額 往年嗎 對 往年 那大概是五年之間吧 對 可是我是說他們 如果像這種客戶 他們有被要求說 在哪一時間點之前要報 是不是台灣現在沒在管 我知道是國壽 國壽他們好像有跟我們 有一個默契 我不知道多少錢上台 但是如果他們真的要突然要 匯個很大的 十億什麼的 他們可能會控制 印象中的這件事情 但是並沒有妨礙嘛 並沒有說你沒報資金 他就不讓你報 就並沒有卡你 說你沒報資金 我就不讓你再往下做教育 好像沒有 好像是一個默契 邏輯上應該是 台灣有一個機制是 網路簽名的感覺 台灣有一個機制是 如果你的那個匯款交易 匯出的交易 就是一次做超過六十億 然後那筆交易會被停下來 然後台幣他們會通知 要通知環福部 環福部去跟那個金融 就是那個台幣的資金調度科 去講有這個 然後等他們確認好 這個資金調度完成 說可以做交易了 然後再請阿弟幫他 那停是停在哪一端 是客戶那邊 客戶有感覺嗎 客戶沒感覺 客戶就覺得在等而已 就是交易執行中 派程中之類的 好 好像是因為怕那個 財經那邊的 我們的那個存款 存款帳戶不夠齊 對啊 我們那時候他們就想問說 台幣好像有這個 外幣本來台灣的量 就還沒有到很大 好 OK 好 謝謝 剛剛出了第二題 剛剛這個資金調度的話 我們就要有個人來主導這件事情 假設大家都在問的話 然後我們C片 就有一個人主控這一段 是不是需要 最近是幾個國家要做 CNN 我們三個國家 之前有開過一個會 但是感覺上 我們這邊牽涉的系統都蠻單純的 都只有GMP跟Apple TV的 跟自動通信通報系統的那個 三個系統算結合 所以 有很多一個相當 科技的做法 這看起來紮實 對啊 我們可以把我們現在 通常的狀況盤點一下 就是 台灣那邊 台灣我們去要 我們用迂迴站數去要資料 那我是說大家 到底 我比較好奇的是 哪一段需要refer到台灣這邊 因為假如說要系統串連 其實我們也不需要 reference到台灣的情況串連 因為我們現在知道之後 其實應該就可以知道 所以柬埔寨那邊 柬埔寨那邊應該是想要知道 業務流程要怎麼設計 上海那邊 上海那邊應該是想要知道 怎麼設計 還是說是哪一段發動 譬如說你 譬如說日月交易 是什麼時候通報 然後比較像是 或是當日交易什麼時候通報 多少錢以上 有什麼特殊的規則 就是需要 這是業務規則嗎 還是說其實台灣是這一段 可以啊 可以啊 然後各區應該也會 原本的業務規則吧 第二題 第二題 就是我們現在應該 大家都有那個海外 就是海外客戶 可以在查 就是在分行端查客戶的資料 然後要簽 就是在開通這個之前 要先簽保密協議 然後這樣子 因為它裡面有些條款是 就是應該是要先簽的啦 對 然後現在主要問題是 到底為什麼要簽這個保密協議 然後看起來是 不是滿合理的嗎 是誰在問 台灣是法官 比較像是 因為我記得邏輯是因為 我們總行是海外分行的 also是一樣的 所以海外分行它一定also是一個 或是它內部的一些 also是一個規章的時候 會寫說 野外的人要去簽 保密協議的規則 我記得的邏輯是這樣 那就看那個分行 或者是那個 它有沒有寫 在它內部的also這個 一個好像會有一些文件吧 文件內規 或者是also什麼的合約上 有沒有去寫這件事情 好像比較硬的就是它有寫 我先查一下 那假設不用簽的話 還是有地方去做註記吧 就是要上 對 上icontact 然後上的時候就要把那些 保密協議一起放上去 或者是上icontact 然後如果沒有那個保密協議 假設比較鬆的分行 它不需要 但是還是要經過 就是icontact會匯到 比如說院台 院裡面統一 會不會改流程 因為主軸就是說 確定是當地的保護法官也同意了 然後有說純真的國際註記 至少做到這基本 然後把過去的方法改掉也可以 因為我記得工程師 以Qber來講 他也不可以亂查人家的資料 是沒有簽過 可是他已經會留資訊 他沒有辦法查 不會說比照辦理的話 台灣是這樣子 其實都查得到 那現在另外一題是說 現在NDA裡面有些條款已經過期了 對 就是保障一些藝術品 那就是海外他們就是 所以就是應該是要請海外 保證員來看 然後去看的話 再加強 照理說他們今天會發起的機制 應該都會有一個定期的 就看一下為什麼那個 哦 哦 來 好 哦 哦 哦 哦 哦 哦 哦 哦 哦 哦 哦 哦 哦 哦 哦 哦 哦 哦 哦 哦 哦 哦 哦 哦"
+        }
+      }
+    ]
+  },
+  "connections": {
+    "Google Drive Trigger": {
+      "main": [
+        [
+          {
+            "node": "Download",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "xAI Grok Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Basic LLM Chain1",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Basic LLM Chain": {
+      "main": [
+        [
+          {
+            "node": "Code2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download": {
+      "main": [
+        [
+          {
+            "node": "Transcribe",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Transcribe": {
+      "main": [
+        [
+          {
+            "node": "分割input",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "No Operation, do nothing",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Remove File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "create file": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Basic LLM Chain",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Over Items": {
+      "main": [
+        [
+          {
+            "node": "Basic LLM Chain",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Basic LLM Chain1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Basic LLM Chain1": {
+      "main": [
+        [
+          {
+            "node": "Combine",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "分割input": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "No Operation, do nothing": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code2": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Combine": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge": {
+      "main": [
+        [
+          {
+            "node": "create file",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Send Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Remove File": {
+      "main": [
+        []
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "378ab5e0-8939-4556-8de4-f965327d0227",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "e9475f779daf0d57ffdb3d41b1a55ff3c5eb13cc9b4c9e2eb9d36ede8b50b9e8"
+  },
+  "id": "qf0zXNVpUbr7bstA",
+  "tags": []
+}

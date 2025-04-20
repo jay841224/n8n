@@ -1,0 +1,429 @@
+{
+  "name": "Code Review",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## Edit your own prompt ⬇️\n"
+      },
+      "name": "Sticky Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        360,
+        0
+      ],
+      "typeVersion": 1,
+      "id": "faec6f1d-adc8-419a-8008-7a010cc2198f"
+    },
+    {
+      "parameters": {
+        "content": "## Filter comments and customize your trigger words ⬇️"
+      },
+      "name": "Sticky Note2",
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -920,
+        20
+      ],
+      "typeVersion": 1,
+      "id": "00f1c705-1644-4ed4-85f6-71fecf58430b"
+    },
+    {
+      "parameters": {
+        "content": "## Replace your github URL and token ⬇️"
+      },
+      "name": "Sticky Note3",
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -660,
+        20
+      ],
+      "typeVersion": 1,
+      "id": "35181dfc-f716-4240-88d6-531bd7573d4b"
+    },
+    {
+      "parameters": {
+        "content": "## Replace your github URL and token ⬇️"
+      },
+      "name": "Sticky Note4",
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        680,
+        0
+      ],
+      "typeVersion": 1,
+      "id": "f44435cd-9230-4ef9-8e2a-8b6124658e57"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "operator": {
+                "type": "number",
+                "operation": "equals"
+              },
+              "leftValue": "={{ $json.body.pull_request.comments }}",
+              "rightValue": 0,
+              "id": "5476a00f-dab4-4b68-822c-35959b623bb1"
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "name": "Need Review",
+      "type": "n8n-nodes-base.if",
+      "position": [
+        -860,
+        220
+      ],
+      "typeVersion": 2,
+      "id": "2fd3e0ac-863d-4763-802a-ddf6146490ff"
+    },
+    {
+      "parameters": {
+        "url": "=https://api.github.com/repos/{{ $json[\"body\"][\"repository\"][\"full_name\"] }}/compare/{{ $json[\"body\"][\"before\"] }}...{{ $json[\"body\"][\"after\"] }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "={{ $env.GITHUB_TOKEN }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "name": "Get Changes",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [
+        -600,
+        200
+      ],
+      "typeVersion": 4.1,
+      "id": "a21efe6a-c8c7-4ae8-aaf5-12b41085be17"
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "files",
+        "include": "selectedOtherFields",
+        "fieldsToInclude": "patch",
+        "options": {
+          "disableDotNotation": false,
+          "destinationFieldName": "changes",
+          "includeBinary": false
+        }
+      },
+      "name": "Split Out",
+      "type": "n8n-nodes-base.splitOut",
+      "position": [
+        -400,
+        200
+      ],
+      "typeVersion": 1,
+      "id": "6dfcb9ed-f0ee-430c-b86a-b44285b8f799"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              },
+              "leftValue": "={{ $json.changes.changes }}",
+              "rightValue": 0,
+              "id": "22960444-942d-49a5-8da4-7f20e7dbf802"
+            },
+            {
+              "id": "4d6ad38f-6acf-477e-9e91-da503fd1e0b2",
+              "leftValue": "={{ $json.changes.filename }}",
+              "rightValue": ".java",
+              "operator": {
+                "type": "string",
+                "operation": "endsWith"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "name": "Skip File Change",
+      "type": "n8n-nodes-base.if",
+      "position": [
+        -200,
+        200
+      ],
+      "typeVersion": 2,
+      "id": "6918aa2e-17c2-49c2-84a4-2e53f01e7a57"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "function parsePatch(patch) {\n\tconst lines = patch.split('\\n');\n\tlet lastOldLine = 0;\n\tlet lastNewLine = 0;\n\tlet positionLine = 0;\n\tconst filteredLines = [];\n\n\tlines.forEach((line) => {\n\t\tconst match = line.match(/^@@ -(\\d+),\\d+ \\+(\\d+),\\d+ @@/);\n\t\tif (match) {\n\t\t\tlastOldLine = parseInt(match[1]);\n\t\t\tlastNewLine = parseInt(match[2]);\n\t\t\tpositionLine = lastNewLine + 1;\n\t\t}\n\t\tif (line.trim() !== '\\\\ No newline at end of file') {\n\t\t\tfilteredLines.push(line);\n\t\t}\n\t});\n\n\treturn {\n\t\tlastOldLine,\n\t\tlastNewLine,\n\t\tpositionLine,\n\t\tpatch: filteredLines.join('\\n')\n\t};\n}\n\n// 這裡要注意：你的資料是在 item.json 裡面\nlet patch = item?.json?.changes?.patch || item?.json?.patch || null;\nlet changesCount = item?.json?.changes?.changes || null;\n\nif (!patch) {\n\treturn {\n\t\tskipped: true,\n\t\treason: \"缺少 patch\",\n\t\toriginalItem: item\n\t};\n}\n\nconst result = parsePatch(patch);\n\nreturn {\n\t...result,\n\tpositionLine: changesCount ?? result.positionLine,\n\tfile: item?.json?.changes?.filename ?? \"unknown\"\n};"
+      },
+      "name": "Parse Last Diff Line",
+      "type": "n8n-nodes-base.code",
+      "position": [
+        0,
+        0
+      ],
+      "typeVersion": 2,
+      "id": "c04a8d95-f5f2-4a55-8c1b-6a1161adabed"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://api.github.com/repos/{{$('Webhook').item.json['body'].repository.full_name}}/pulls/{{ $('Webhook').item.json.body.pull_request.number }}/comments",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "={{ $env.GITHUB_TOKEN }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": " application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n    \"body\": {{ JSON.stringify($('Basic LLM Chain').item.json[\"text\"]); }},\n     \"commit_id\": {{ JSON.stringify($('Need Review').item.json.body.pull_request.head.sha); }},\n  \"path\": {{ JSON.stringify($('Get Changes').item.json.filename); }},\n  \"position\": {{ $('Parse Last Diff Line').item.json.positionLine }}\n}",
+        "options": {}
+      },
+      "name": "Post Discussions",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [
+        740,
+        180
+      ],
+      "typeVersion": 4.1,
+      "id": "e766a5b3-4dae-4ef5-8a88-7886146e42db"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "4b8de672-fbc8-41c9-a4b4-a218579206cc",
+        "options": {}
+      },
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "position": [
+        -1080,
+        220
+      ],
+      "webhookId": "4b8de672-fbc8-41c9-a4b4-a218579206cc",
+      "typeVersion": 1.1,
+      "id": "2d9c55b6-212e-446a-8089-991f560f946d"
+    },
+    {
+      "parameters": {
+        "prompt": "=\n\n```Original code\n {{ $json.originalCode }}\n```\nchange to\n```New code\n {{ $json.newCode }}\n```\nPlease review the code changes in this section:",
+        "hasOutputParser": true,
+        "messages": {
+          "messageValues": [
+            {
+              "type": "=AIMessagePromptTemplate",
+              "message": "你是一位資深 Java 工程師，請針對以下 Java 程式碼進行 Code Review，請依據以下準則逐一檢查，並用清楚的格式列出發現的問題與建議改善方式。\n\n【請檢查的面向】：\n1. 程式碼可讀性（命名、註解、縮排、風格）\n2. 類別與方法設計是否符合單一職責原則（SRP）\n3. 是否有潛在的錯誤、例外處理不足\n4. 有無重複程式碼可重構\n5. 是否有違反 Java/Spring Best Practices 的地方\n6. 測試是否覆蓋關鍵邏輯，測試命名與設計是否清楚\n7. 是否使用了過時的 API 或不建議的設計模式\n\n【輸出格式】：\n📄 檔案：<檔案名稱>\n\n[問題 1] <簡要標題>\n描述：<這段程式碼的問題描述>\n建議：<如何改善，包括 refactor 想法或風格建議>\n（如有需要，請提供建議修改後的程式碼片段）\n\n...\n\n【要進行審查的程式碼】：\n<請審查以下 Java 程式碼>"
+            }
+          ]
+        }
+      },
+      "name": "Basic LLM Chain",
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "position": [
+        340,
+        180
+      ],
+      "typeVersion": 1.2,
+      "id": "eb2212e5-b235-4bde-acfd-08e510369a2f"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "grok-2-1212",
+          "mode": "list",
+          "cachedResultName": "grok-2-1212"
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        340,
+        360
+      ],
+      "id": "29d7bf2e-2207-4cfb-a1f4-db0520d5828d",
+      "name": "OpenAI Chat Model",
+      "credentials": {
+        "openAiApi": {
+          "id": "cPl8Hl4rNEX0zDLC",
+          "name": "xAI"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// 解析 patch 的函数\nfunction parsePatch(patch) {\n    const lines = patch.split('\\n');\n    let lastOldLine = 0;\n    let lastNewLine = 0;\n    let positionLine = 0;\n    const originalLines = [];\n    const newLines = [];\n\n    lines.forEach((line, index) => {\n        const match = line.match(/^@@ -(\\d+),\\d+ \\+(\\d+),\\d+ @@/);\n        if (match) {\n            lastOldLine = parseInt(match[1]);\n            lastNewLine = parseInt(match[2]);\n            positionLine = lastNewLine + 1;\n        } else if (line.startsWith('-')) {\n            originalLines.push(line);\n        } else if (line.startsWith('+')) {\n            newLines.push(line);\n        } else if (!line.startsWith('\\\\ No newline at end of file')) {\n            originalLines.push(line);\n            newLines.push(line);\n        }\n    });\n\n    return {\n        lastOldLine: lastOldLine,\n        lastNewLine: lastNewLine,\n        positionLine: positionLine,\n        originalCode: originalLines.join('\\n'),\n        newCode: newLines.join('\\n')\n    };\n}\n\n// 从输入中提取信息\nconst input = $json[\"patch\"];\nconst parsedData = parsePatch(input);\n\n// 输出\nreturn {\n    originalCode: parsedData.originalCode,\n    newCode: parsedData.newCode\n};\n"
+      },
+      "name": "Code",
+      "type": "n8n-nodes-base.code",
+      "position": [
+        180,
+        -180
+      ],
+      "typeVersion": 2,
+      "id": "e23b9726-95df-469f-aca5-af9513ef576c"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Need Review": {
+      "main": [
+        [
+          {
+            "node": "Get Changes",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Get Changes",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Changes": {
+      "main": [
+        [
+          {
+            "node": "Split Out",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Out": {
+      "main": [
+        [
+          {
+            "node": "Skip File Change",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Skip File Change": {
+      "main": [
+        [
+          {
+            "node": "Parse Last Diff Line",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Last Diff Line": {
+      "main": [
+        [
+          {
+            "node": "Code",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Need Review",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Basic LLM Chain": {
+      "main": [
+        [
+          {
+            "node": "Post Discussions",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Basic LLM Chain",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Post Discussions": {
+      "main": [
+        []
+      ]
+    },
+    "Code": {
+      "main": [
+        [
+          {
+            "node": "Basic LLM Chain",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "c33c1c7f-e0b2-43cb-87f1-07b08ca1dd9e",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "cbd1bd48ecf75f4d40db1419b681721549047c5bcbad9b6c8f520ce88d8e6c96"
+  },
+  "id": "l9AWkkT5q8iOhbE3",
+  "tags": [
+    {
+      "createdAt": "2025-03-28T10:24:07.347Z",
+      "updatedAt": "2025-03-28T10:24:07.347Z",
+      "id": "ZAve76iu6H0kqkLA",
+      "name": "share"
+    }
+  ]
+}
